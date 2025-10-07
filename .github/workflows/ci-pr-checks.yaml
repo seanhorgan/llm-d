@@ -35,7 +35,7 @@ jobs:
           python-version: '3.x'
 
       - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
+        uses: j178/prek-action@v1
 
   lint-and-test:
     runs-on: ubuntu-latest
