@@ -7,11 +7,13 @@ set -Eeuo pipefail
 # shellcheck source=/dev/null
 source /opt/vllm/bin/activate
 
-# install python dependencies
-uv pip install nixl cuda-python 'huggingface_hub[hf_xet]'
-
-# install compiled wheels
-uv pip install /tmp/wheels/*.whl
+# build list of packages to install
+INSTALL_PACKAGES=(
+    nixl
+    cuda-python
+    'huggingface_hub[hf_xet]'
+    /tmp/wheels/*.whl
+)
 
 # clone vllm repository
 git clone "${VLLM_REPO}" /opt/vllm-source
@@ -38,26 +40,29 @@ if [ "${VLLM_PREBUILT}" = "1" ]; then
         echo "VLLM_PREBUILT set but no platform compatible wheel exists for: https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/"
         exit 1
     fi
-    uv pip install "${WHEEL_URL}"
+    INSTALL_PACKAGES+=("${WHEEL_URL}")
     rm /opt/warn-vllm-precompiled.sh
 else
     if [ "${VLLM_USE_PRECOMPILED}" = "1" ] && [ -n "${WHEEL_URL}" ]; then
         echo "Using precompiled binaries and shared libraries for commit: ${VLLM_COMMIT_SHA}."
         export VLLM_USE_PRECOMPILED=1
         export VLLM_PRECOMPILED_WHEEL_LOCATION="${WHEEL_URL}"
-        uv pip install -e /opt/vllm-source
+        INSTALL_PACKAGES+=(-e /opt/vllm-source)
         /opt/warn-vllm-precompiled.sh
         rm /opt/warn-vllm-precompiled.sh
     else
         echo "Compiling fully from source. Either precompile disabled or wheel not found in index from main."
         unset VLLM_USE_PRECOMPILED VLLM_PRECOMPILED_WHEEL_LOCATION || true
-        uv pip install -e /opt/vllm-source
+        INSTALL_PACKAGES+=(-e /opt/vllm-source)
         rm /opt/warn-vllm-precompiled.sh
     fi
 fi
 
-# install nvidia-nccl
-uv pip install "nvidia-nccl-cu12>=2.26.2.post1"
+# add nvidia-nccl
+INSTALL_PACKAGES+=("nvidia-nccl-cu12>=2.26.2.post1")
+
+# install all packages in one command
+uv pip install "${INSTALL_PACKAGES[@]}"
 
 # cleanup
 rm -rf /tmp/wheels
