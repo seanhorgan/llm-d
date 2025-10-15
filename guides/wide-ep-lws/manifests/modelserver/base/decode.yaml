@@ -9,7 +9,7 @@ metadata:
 spec:
   replicas: 1
   leaderWorkerTemplate:
-    size: 2
+    size: 1
     workerTemplate:
       metadata:
         labels:
@@ -42,7 +42,7 @@ spec:
               sizeLimit: 1Gi # roughly 32MB per local DP plus scratch space
         containers:
         - name: vllm-worker
-          image: ghcr.io/llm-d/llm-d-cuda-dev:pr-362@sha256:66280f64f6275e2305ecb442dce29460e84500e056cb2cb914c0e06efd4134a8
+          image: ghcr.io/llm-d/llm-d-cuda-dev:pr-362@sha256:9213c672eec56adb8394c5e0055f3a35b67f0be160b6b9c3b670f9423092721c
           securityContext:
             capabilities:
               add:
