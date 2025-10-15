@@ -229,9 +229,10 @@ RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
 WORKDIR /workspace
 
 # Define commit SHAs as build args to avoid layer invalidation
-ARG LMCACHE_REPO=https://github.com/neuralmagic/LMCache.git
 ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
-ARG VLLM_COMMIT_SHA="b8b302cde434df8c9289a2b465406b47ebab1c2d"
+ARG VLLM_REPO="https://github.com/neuralmagic/vllm"
+ARG VLLM_PRECOMPILED_WHEEL_COMMIT="483ea646111b5ef576c2c6c833c321520de72fb2"
+ARG VLLM_COMMIT_SHA="13daa6ab352eb0892b261478ac6880eb390860d4"
 
 # Define if lmcache should be built 
 # Clone repositories with cache mounts
@@ -384,8 +385,14 @@ RUN mkdir -p /opt/vllm-source && \
 
 # Define commit SHAs as build args to avoid layer invalidation
 ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
+<<<<<<< HEAD
 ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
 ARG VLLM_COMMIT_SHA="b8b302cde434df8c9289a2b465406b47ebab1c2d"
+=======
+ARG VLLM_REPO="https://github.com/david6666666/vllm.git"
+ARG VLLM_OFFICIAL_RELEASE_COMMIT="f71952c1c49fb86686b0b300b727b26282362bf4"
+ARG VLLM_COMMIT_SHA="e9fd1baad6d82b964ac78490b9ee03910b939e6b"
+>>>>>>> e6e63d4 (image build + deployment manifest changes)
 
 # Dictates if we should pull a production wheel for the vllm commit sha
 ARG VLLM_PREBUILT=0
@@ -412,7 +419,7 @@ RUN --mount=type=cache,target=/var/cache/git \
         --no-cache-dir \
         --no-index \
         --no-deps \
-        --find-links "https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/" \
+        --find-links "https://wheels.vllm.ai/${VLLM_OFFICIAL_RELEASE_COMMIT}/vllm/" \
         --only-binary=:all: \
         --pre vllm \
         --dry-run \

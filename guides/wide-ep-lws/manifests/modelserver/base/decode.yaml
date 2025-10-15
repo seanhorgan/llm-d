@@ -97,7 +97,8 @@ spec:
                 --eplb-config '{"window_size":"1000",
                                 "step_interval":"3000",
                                 "num_redundant_experts":"32",
-                                "log_balancedness":"False"}' \
+                                "log_balancedness":"False",
+                                "use_async":"True"}' \
                 --compilation_config '{"cudagraph_mode": "FULL_DECODE_ONLY"}'
           env:
           # VLLM_MOE_DP_CHUNK_SIZE is a tunable parameter.
