@@ -170,29 +170,32 @@ def lint_dockerfile(dockerfile_path: Path, scripts_dir: Path) -> Tuple[bool, Lis
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: lint-dockerfile-envvars.py <Dockerfile> <scripts-dir>", file=sys.stderr)
+        print("Usage: lint-dockerfile-envvars.py <scripts-dir> <Dockerfile> [<Dockerfile>...]", file=sys.stderr)
         sys.exit(1)
 
-    dockerfile = Path(sys.argv[1])
-    scripts_dir = Path(sys.argv[2])
-
-    if not dockerfile.exists():
-        print(f"Error: Dockerfile not found: {dockerfile}", file=sys.stderr)
-        sys.exit(1)
+    scripts_dir = Path(sys.argv[1])
+    dockerfiles = [Path(arg) for arg in sys.argv[2:]]
 
     if not scripts_dir.exists():
         print(f"Error: Scripts directory not found: {scripts_dir}", file=sys.stderr)
         sys.exit(1)
 
-    success, errors = lint_dockerfile(dockerfile, scripts_dir)
+    all_errors = []
+    for dockerfile in dockerfiles:
+        if not dockerfile.exists():
+            print(f"Error: Dockerfile not found: {dockerfile}", file=sys.stderr)
+            sys.exit(1)
 
-    if errors:
-        for error in errors:
+        success, errors = lint_dockerfile(dockerfile, scripts_dir)
+        all_errors.extend(errors)
+
+    if all_errors:
+        for error in all_errors:
             print(error, file=sys.stderr)
-        print(f"\n✗ {len(errors)} error(s) found", file=sys.stderr)
+        print(f"\n✗ {len(all_errors)} error(s) found", file=sys.stderr)
         sys.exit(1)
 
-    print(f"✓ Dockerfile environment variables validated successfully")
+    print(f"✓ All Dockerfiles validated successfully")
     sys.exit(0)
 
 
