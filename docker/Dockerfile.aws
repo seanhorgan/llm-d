@@ -61,13 +61,8 @@ RUN --mount=type=secret,id=aws_access_key_id \
 WORKDIR /workspace
 
 # Create UV constraint files
-RUN cat > /tmp/build-constraints.txt <<'EOF'
-torch==2.8.0
-EOF
-
-RUN cat > /tmp/constraints.txt <<'EOF'
-torch==2.8.0
-EOF
+COPY docker/build-constraints.txt /tmp/build-constraints.txt
+COPY docker/constraints.txt /tmp/constraints.txt
 
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
@@ -329,9 +324,7 @@ ARG CUDA_PATCH=1
 ARG PYTHON_VERSION
 ARG NVSHMEM_VERSION=3.3.20
 
-RUN cat > /tmp/constraints.txt <<'EOF'
-torch==2.8.0
-EOF
+COPY docker/constraints.txt /tmp/constraints.txt
 
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
