@@ -12,7 +12,10 @@ source /usr/local/bin/setup-sccache
 git clone https://github.com/NVIDIA/gdrcopy.git
 cd gdrcopy
 
-CC="sccache gcc" CXX="sccache g++" PREFIX=/usr/local DESTLIB=/usr/local/lib make lib_install
+if [ "${USE_SCCACHE}" = "true" ]; then
+    export CC="sccache gcc" CXX="sccache g++"
+fi
+PREFIX=/usr/local DESTLIB=/usr/local/lib make lib_install
 
 cp src/libgdrapi.so.2.* /usr/lib64/
 ldconfig
