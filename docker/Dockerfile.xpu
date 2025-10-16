@@ -73,7 +73,12 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN python3 -m pip install -e tests/vllm_test_utils
 
 # install nixl from source code
-RUN python3 /workspace/vllm/tools/install_nixl_from_source_ubuntu.py
+RUN if [ -f /workspace/vllm/tools/install_nixl_from_source_ubuntu.py ]; then \
+        python3 /workspace/vllm/tools/install_nixl_from_source_ubuntu.py; \
+    else \
+        echo "ERROR: /workspace/vllm/tools/install_nixl_from_source_ubuntu.py not found!" >&2; \
+        exit 1; \
+    fi
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib/python3.12/dist-packages/.nixl.mesonpy.libs/plugins/"
 
 ENTRYPOINT ["python", "-m", "vllm.entrypoints.openai.api_server"]
