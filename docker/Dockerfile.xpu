@@ -142,10 +142,6 @@ RUN dnf install -y --allowerasing \
         curl \
         gcc && dnf clean all
 
-# Copy readiness probe script
-COPY scripts/readiness_probe.sh /usr/local/bin/readiness_probe.sh
-RUN chmod +x /usr/local/bin/readiness_probe.sh
-
 # Setup ldconfig and library paths
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
     echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local.conf && \

@@ -365,10 +365,6 @@ RUN apt-get update -y && apt-get install -y \
         librdmacm1 \
         gcc && apt-get clean all
 
-# Copy readiness probe script
-COPY scripts/readiness_probe.sh /usr/local/bin/readiness_probe.sh
-RUN chmod +x /usr/local/bin/readiness_probe.sh
-
 # Copy UCX libraries from builder
 COPY --from=builder /usr/local/lib/libucp* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libucs* /usr/local/lib/

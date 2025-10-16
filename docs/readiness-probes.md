@@ -1,373 +1,341 @@
-# vLLM Inference Readiness Probes
+# vLLM Model-Aware Readiness Probes
 
 ## Overview
 
-The llm-d inference images include a comprehensive readiness probe script to ensure proper container lifecycle management in Kubernetes. This addresses the three distinct stages of readiness for vLLM inference containers:
+Proper health checking for vLLM inference containers requires understanding three distinct lifecycle stages:
 
-1. **Container Running** - Kubernetes native container lifecycle
-2. **API Server Ready** - vLLM OpenAI API server is accepting connections
-3. **Model Loaded** - Model-specific API routes are ready to serve inference requests
+1. **Container Running** - Kubernetes container lifecycle
+2. **API Server Ready** - vLLM OpenAI-compatible API server is accepting connections  
+3. **Model Loaded** - Model is loaded and ready to serve inference requests
+
+This guide explains how to configure Kubernetes probes to ensure pods are only marked Ready when models are fully loaded and operational.
 
 ## Problem Statement
 
-When deploying vLLM inference servers, there's a significant time gap between when the container starts and when the model is fully loaded and ready to serve requests. Using basic health checks (`/health` endpoint) can lead to:
+When deploying vLLM inference servers, there's a significant time gap between when the container starts and when the model is fully loaded. Using only basic health checks can lead to:
 
-- Premature traffic routing to pods that aren't ready
-- Failed requests during model loading
-- Need for arbitrary sleep times in deployment pipelines
-- Unreliable E2E testing
+- Premature traffic routing to pods that aren't ready to serve requests
+- Failed requests during model loading phase
+- Need for arbitrary sleep times in deployment pipelines  
+- Unreliable E2E testing and CI/CD workflows
 
-The `/health` endpoint only indicates that the vLLM server process is running, not that the model is loaded and ready to serve.
+The vLLM `/health` endpoint only indicates that the server process is running, **not** that models are loaded and ready to serve.
 
-## Solution
+## Solution: Model-Aware HTTP Probes
 
-The `readiness_probe.sh` script provides a proper readiness check by:
-
-1. Verifying the `/health` endpoint responds (server is up)
-2. Checking the `/v1/models` endpoint (model is loaded)
-3. Validating the response contains model data
-
-### Script Location
-
-The readiness probe script is available in all llm-d inference images at:
-```
-/usr/local/bin/readiness_probe.sh
-```
-
-### Usage
-
-The script accepts two optional arguments:
-```bash
-readiness_probe.sh [PORT] [HOST]
-```
-
-**Arguments:**
-- `PORT` - Port where vLLM server is listening (default: `8000`)
-- `HOST` - Host to connect to (default: `localhost`)
-
-**Environment Variables:**
-- `READINESS_TIMEOUT` - Timeout in seconds for HTTP requests (default: `5`)
-
-### Exit Codes
-
-- `0` - Service is ready (model loaded and API responding)
-- `1` - Service is not ready
-
-## Kubernetes Configuration
+Use Kubernetes HTTP probes with vLLM's OpenAI-compatible API endpoints to implement model-aware readiness checking.
 
 ### Recommended Probe Configuration
 
-For production deployments, we recommend using all three probe types:
-
 ```yaml
 containers:
+- name: vllm
+  ports:
+  - containerPort: 8000  # or 8200 for decode pods
+    protocol: TCP
+  
+  # Startup Probe: Wait for model to load during initialization
+  # Protects liveness/readiness probes from firing too early
+  startupProbe:
+    httpGet:
+      path: /v1/models
+      port: 8000
+    initialDelaySeconds: 15    # Time before first probe
+    periodSeconds: 30           # How often to probe during startup
+    timeoutSeconds: 5           # HTTP request timeout
+    failureThreshold: 60        # Max attempts (30s * 60 = 30min max startup time)
+  
+  # Liveness Probe: Is the server process alive?
+  # Simple health check, restarts container if failing
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    periodSeconds: 10           # Check every 10s
+    timeoutSeconds: 5
+    failureThreshold: 3         # Restart after 3 failures
+  
+  # Readiness Probe: Is the model loaded and ready?
+  # Controls traffic routing, removes from service if failing
+  readinessProbe:
+    httpGet:
+      path: /v1/models
+      port: 8000
+    periodSeconds: 5            # Check frequently for fast recovery
+    timeoutSeconds: 2
+    failureThreshold: 3
+```
+
+### Port Configuration by Role
+
+Different pod roles use different ports:
+
+| Pod Role | Port | Description |
+|----------|------|-------------|
+| Prefill | 8000 | Direct vLLM API access |
+| Decode | 8200 | Proxied through sidecar (8200 → 8000) |
+| Standalone | 8000 | Single-node deployments |
+
+Always configure probes to match the pod's serving port.
+
+## How It Works
+
+### `/health` Endpoint
+
+The `/health` endpoint provides a basic liveness check:
+
+```bash
+$ curl http://localhost:8000/health
+{}
+```
+
+**Behavior:**
+- Returns `200 OK` immediately when vLLM server starts
+- Does **not** wait for model loading
+- Use for `livenessProbe` only
+
+### `/v1/models` Endpoint (OpenAI-Compatible)
+
+The `/v1/models` endpoint is model-aware and indicates true readiness:
+
+```bash
+$ curl http://localhost:8000/v1/models
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "meta-llama/Llama-3.1-8B-Instruct",
+      "object": "model",
+      "created": 1704321600,
+      "owned_by": "vllm"
+    }
+  ]
+}
+```
+
+**Behavior:**
+- Returns `503` or connection refused during model loading
+- Returns `200 OK` with model metadata once ready
+- Ideal for `startupProbe` and `readinessProbe`
+
+### Probe Lifecycle
+
+```
+Container Start
+      ↓
+[startupProbe on /v1/models]
+  ↓ (30s intervals, up to 30min)
+  ✓ Model loaded → Startup complete
+      ↓
+[livenessProbe on /health] ← Restarts if server crashes
+[readinessProbe on /v1/models] ← Routes traffic when ready
+```
+
+## Benefits
+
+### HTTP Probes vs Exec Probes
+
+**HTTP Probes (Recommended):**
+- ✅ Lightweight, no exec overhead
+- ✅ Compatible with cloud load balancers
+- ✅ Native Kubernetes integration
+- ✅ Better observability and metrics
+- ✅ Uses existing vLLM endpoints
+
+**Exec Probes (Legacy):**
+- ❌ Higher overhead (fork/exec per probe)
+- ❌ Incompatible with many cloud load balancers
+- ❌ Requires custom scripts in container
+- ⚠️ More complex to debug and maintain
+
+### For Production Deployments
+- ✅ Prevent premature traffic routing
+- ✅ Avoid failed requests during startup
+- ✅ Enable safe rolling updates
+- ✅ Faster detection of unhealthy pods
+- ✅ Better integration with service meshes
+
+### For E2E Testing
+- ✅ Eliminate arbitrary sleep times
+- ✅ Faster test execution
+- ✅ More reliable test results  
+- ✅ Better error detection
+
+## Examples
+
+### Simulated Accelerator Deployment
+
+Example from `guides/simulated-accelerators/ms-sim/values.yaml`:
+
+```yaml
+decode:
+  replicas: 3
+  containers:
   - name: vllm
-    image: ghcr.io/llm-d/llm-d-cuda-dev:latest
     ports:
-      - containerPort: 8000
-        name: http
-        protocol: TCP
+    - containerPort: 8200
+      protocol: TCP
     
-    # Startup probe - gives the model time to load on initial startup
-    # Disables liveness/readiness checks until this succeeds
     startupProbe:
-      exec:
-        command:
-          - /usr/local/bin/readiness_probe.sh
-          - "8000"
-          - "localhost"
-      initialDelaySeconds: 30
-      periodSeconds: 10
+      httpGet:
+        path: /v1/models
+        port: 8200
+      initialDelaySeconds: 15
+      periodSeconds: 30
       timeoutSeconds: 5
-      failureThreshold: 60  # 10 minutes total (60 * 10s)
+      failureThreshold: 60
     
-    # Liveness probe - detects if the container needs to be restarted
-    # Uses basic health check since we only want to restart on critical failures
     livenessProbe:
       httpGet:
         path: /health
-        port: 8000
-      initialDelaySeconds: 10
+        port: 8200
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    
+    readinessProbe:
+      httpGet:
+        path: /v1/models
+        port: 8200
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+```
+
+### Wide Endpoint Deployment
+
+Example from `guides/wide-ep-lws/manifests/modelserver/base/decode.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vllm-decode
+spec:
+  containers:
+  - name: vllm
+    image: ghcr.io/llm-d/llm-d:latest
+    ports:
+    - containerPort: 8200
+      protocol: TCP
+    
+    startupProbe:
+      httpGet:
+        path: /v1/models
+        port: 8200
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 60
+    
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8200
       periodSeconds: 30
       timeoutSeconds: 5
       failureThreshold: 3
     
-    # Readiness probe - determines if pod should receive traffic
-    # Uses the comprehensive readiness check
     readinessProbe:
-      exec:
-        command:
-          - /usr/local/bin/readiness_probe.sh
-          - "8000"
-          - "localhost"
-      initialDelaySeconds: 5
+      httpGet:
+        path: /v1/models
+        port: 8200
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3
 ```
 
-### Port Configuration
-
-Adjust the port number in the probe configuration based on your deployment:
-
-- **Prefill pods**: Typically use port `8000`
-- **Decode pods**: May use port `8200` (depends on configuration)
-
-Example for decode pods:
-```yaml
-readinessProbe:
-  exec:
-    command:
-      - /usr/local/bin/readiness_probe.sh
-      - "8200"  # Decode port
-      - "localhost"
-  initialDelaySeconds: 5
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-```
-
-### Prefill/Decode Disaggregation
-
-For P/D disaggregated deployments, configure probes for both pod types:
-
-**Prefill Pods:**
-```yaml
-readinessProbe:
-  exec:
-    command:
-      - /usr/local/bin/readiness_probe.sh
-      - "8000"
-```
-
-**Decode Pods:**
-```yaml
-readinessProbe:
-  exec:
-    command:
-      - /usr/local/bin/readiness_probe.sh
-      - "8200"
-```
-
-## Helm Chart Integration
-
-For the `llm-d-modelservice` Helm chart, you can configure probes in your `values.yaml`:
-
-```yaml
-decode:
-  containers:
-    - name: vllm
-      startupProbe:
-        exec:
-          command:
-            - /usr/local/bin/readiness_probe.sh
-            - "8200"
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 60
-      livenessProbe:
-        httpGet:
-          path: /health
-          port: 8200
-        periodSeconds: 30
-        timeoutSeconds: 5
-        failureThreshold: 3
-      readinessProbe:
-        exec:
-          command:
-            - /usr/local/bin/readiness_probe.sh
-            - "8200"
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 3
-
-prefill:
-  containers:
-    - name: vllm
-      startupProbe:
-        exec:
-          command:
-            - /usr/local/bin/readiness_probe.sh
-            - "8000"
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 60
-      livenessProbe:
-        httpGet:
-          path: /health
-          port: 8000
-        periodSeconds: 30
-        timeoutSeconds: 5
-        failureThreshold: 3
-      readinessProbe:
-        exec:
-          command:
-            - /usr/local/bin/readiness_probe.sh
-            - "8000"
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 3
-```
-
-## Tuning Guidelines
-
-### Startup Probe
-
-The startup probe is critical for model loading. Tune based on:
-- Model size (larger models take longer to load)
-- Storage backend (local SSD vs network storage)
-- Available GPU memory
-
-**Small models (< 7B parameters):**
-```yaml
-initialDelaySeconds: 30
-periodSeconds: 10
-failureThreshold: 30  # 5 minutes
-```
-
-**Medium models (7B - 70B parameters):**
-```yaml
-initialDelaySeconds: 60
-periodSeconds: 15
-failureThreshold: 40  # 10 minutes
-```
-
-**Large models (> 70B parameters):**
-```yaml
-initialDelaySeconds: 120
-periodSeconds: 20
-failureThreshold: 60  # 20 minutes
-```
-
-### Readiness Probe
-
-Keep readiness checks frequent to quickly detect issues:
-```yaml
-periodSeconds: 10        # Check every 10 seconds
-timeoutSeconds: 5        # 5 second timeout
-failureThreshold: 3      # Mark unready after 3 failures (30s)
-```
-
-### Liveness Probe
-
-Be conservative with liveness probes to avoid unnecessary restarts:
-```yaml
-periodSeconds: 30        # Check every 30 seconds
-timeoutSeconds: 5        # 5 second timeout  
-failureThreshold: 3      # Restart after 3 failures (90s)
-```
-
-## Testing
+## Testing Probes
 
 ### Manual Testing
 
-Test the readiness probe manually:
+Test the endpoints directly in a running pod:
 
 ```bash
-# Get a shell in the container
-kubectl exec -it <pod-name> -n <namespace> -- bash
+# Get pod name
+POD=$(kubectl get pods -n llm-d -l app=vllm -o name | head -1)
 
-# Run the probe
-/usr/local/bin/readiness_probe.sh 8000 localhost
-echo $?  # Should return 0 when ready
+# Test liveness endpoint
+kubectl exec -n llm-d $POD -- curl -sf http://localhost:8000/health
+
+# Test readiness endpoint  
+kubectl exec -n llm-d $POD -- curl -sf http://localhost:8000/v1/models | jq '.'
 ```
 
 ### Verification
 
-Verify probes are working:
+Check probe status in Kubernetes:
 
 ```bash
-# Check pod events
-kubectl describe pod <pod-name> -n <namespace>
+# Watch pod readiness
+kubectl get pods -n llm-d -w
 
-# Watch pod status during startup
-kubectl get pods -n <namespace> -w
+# Check probe configuration
+kubectl describe pod -n llm-d $POD | grep -A 10 "Liveness:"
 
-# Check probe logs
-kubectl logs <pod-name> -n <namespace> | grep readiness_probe
+# View probe-related events
+kubectl get events -n llm-d --field-selector involvedObject.name=${POD##*/}
 ```
 
-## E2E Testing
-
-With proper readiness probes, E2E tests can eliminate arbitrary sleep times:
-
-**Before:**
-```yaml
-- name: Wait for all pods to be ready
-  run: |
-    kubectl wait pod --for=condition=Ready --all -n ${NAMESPACE} --timeout=15m
-    sleep 480  # Wait for model loading
-```
-
-**After:**
-```yaml
-- name: Wait for all pods to be ready
-  run: |
-    kubectl wait pod --for=condition=Ready --all -n ${NAMESPACE} --timeout=15m
-    # No sleep needed - readiness probe ensures model is loaded
-```
+Expected behavior:
+1. Pod starts, enters `Running` state
+2. Startup probe checks `/v1/models` repeatedly (30s intervals)
+3. Once model loads, startup probe succeeds
+4. Readiness probe takes over, pod becomes `Ready`
+5. Traffic is routed to pod
+6. Liveness probe monitors server health continuously
 
 ## Troubleshooting
 
 ### Pod Stuck in Not Ready
 
-If pods are stuck in not ready state:
+```bash
+# Check startup probe status
+kubectl describe pod -n llm-d $POD | grep -A 5 "Startup:"
 
-1. Check the probe logs:
-   ```bash
-   kubectl logs <pod-name> -n <namespace> | grep readiness_probe
-   ```
+# Check if model is loading slowly
+kubectl logs -n llm-d $POD | grep -i "loading model"
 
-2. Verify the vLLM server is starting:
-   ```bash
-   kubectl logs <pod-name> -n <namespace> | grep -i "uvicorn\|vllm"
-   ```
+# Test endpoint manually
+kubectl exec -n llm-d $POD -- curl -v http://localhost:8000/v1/models
+```
 
-3. Check for model loading errors:
-   ```bash
-   kubectl logs <pod-name> -n <namespace> | grep -i "error\|failed"
-   ```
+**Common causes:**
+- Model download taking longer than `failureThreshold` allows
+- Insufficient resources (CPU/memory/GPU)
+- Wrong port in probe configuration
+- Network issues preventing model download
 
-4. Manually test the endpoints:
-   ```bash
-   kubectl exec -it <pod-name> -n <namespace> -- curl -s http://localhost:8000/health
-   kubectl exec -it <pod-name> -n <namespace> -- curl -s http://localhost:8000/v1/models
-   ```
+**Solutions:**
+- Increase `failureThreshold` or `periodSeconds` in `startupProbe`
+- Pre-download models using init containers or persistent volumes
+- Verify pod has sufficient resources allocated
+- Check probe configuration matches actual serving port
 
-### Probe Timeouts
+### Probe Failures After Startup
 
-If probes are timing out:
+```bash
+# Check recent probe failures
+kubectl get events -n llm-d | grep -i probe
 
-1. Increase the timeout:
-   ```yaml
-   timeoutSeconds: 10  # Increase from 5
-   ```
+# Check pod logs for errors
+kubectl logs -n llm-d $POD --tail=100
+```
 
-2. Increase the period for startup:
-   ```yaml
-   periodSeconds: 20  # Check less frequently
-   ```
-
-3. Check network connectivity within the pod
-
-### False Negatives
-
-If the probe reports not ready when the model is loaded:
-
-1. Verify the port matches your vLLM configuration
-2. Check if there are firewall or network policy restrictions
-3. Ensure the probe script is executable: `ls -la /usr/local/bin/readiness_probe.sh`
-
-## Related Issues
-
-- Issue #300: Original feature request for readiness probe implementation
-- See E2E workflow files for integration examples
+**Common causes:**
+- vLLM server crashed (liveness probe fails)
+- Model unloaded or corrupted (readiness probe fails)
+- Resource exhaustion (OOM, GPU errors)
+- Network connectivity issues
 
 ## Additional Resources
 
-- [Kubernetes Probes Documentation](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
-- [vLLM OpenAI API Documentation](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
-- [llm-d Getting Started Guide](./getting-started-inferencing.md)
+- [Kubernetes Probe Configuration](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+- [vLLM OpenAI-Compatible Server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html)
+- [llm-d Getting Started](../README.md)
+- [llm-d Monitoring Guide](monitoring/README.md)
 
+## Related Issues
+
+- [vLLM #6073](https://github.com/vllm-project/vllm/issues/6073) - Request for dedicated `/ready` endpoint
+- vLLM currently relies on `/v1/models` for model-aware readiness checking

@@ -346,10 +346,6 @@ RUN dnf install -y --allowerasing \
         jq \
         gcc && dnf clean all
 
-# Copy readiness probe script
-COPY scripts/readiness_probe.sh /usr/local/bin/readiness_probe.sh
-RUN chmod +x /usr/local/bin/readiness_probe.sh
-
 # Copy gdrcopy libraries from builder
 COPY --from=builder /usr/lib64/libgdrapi.so.2.* /usr/lib64/
 COPY --from=builder /usr/local/lib/libgdrapi.so* /usr/local/lib/

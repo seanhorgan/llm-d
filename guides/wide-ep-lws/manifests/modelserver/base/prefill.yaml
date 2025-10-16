@@ -116,10 +116,9 @@ spec:
             name: metrics
             protocol: TCP
           startupProbe:
-            exec:
-              command:
-                - /usr/local/bin/readiness_probe.sh
-                - "8000"
+            httpGet:
+              path: /v1/models
+              port: 8000
             initialDelaySeconds: 60
             periodSeconds: 15
             timeoutSeconds: 5
@@ -132,10 +131,9 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            exec:
-              command:
-                - /usr/local/bin/readiness_probe.sh
-                - "8000"
+            httpGet:
+              path: /v1/models
+              port: 8000
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
