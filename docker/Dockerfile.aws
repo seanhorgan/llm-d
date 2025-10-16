@@ -247,18 +247,20 @@ WORKDIR /workspace
 ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
 ARG VLLM_COMMIT_SHA="f71952c1c49fb86686b0b300b727b26282362bf4"
 
-# Define if lmcache should be built
-# Clone repositories with cache mounts
+# Build LMCache wheel (skip on ARM64 - infinistore dependency has no ARM wheels)
 RUN --mount=type=cache,target=/var/cache/git \
-    git clone https://github.com/neuralmagic/LMCache.git && \
-    cd LMCache && \
-    git checkout -q $LMCACHE_COMMIT_SHA && \
-    cd .. && \
-    # Build LMCache wheel
-    cd LMCache && \
-    source ${VIRTUAL_ENV}/bin/activate && \
-    uv build --wheel --no-build-isolation --out-dir /wheels  && \
-    cd ..
+    if [ "$(uname -m)" != "aarch64" ] && [ "$(uname -m)" != "arm64" ]; then \
+        git clone https://github.com/neuralmagic/LMCache.git && \
+        cd LMCache && \
+        git checkout -q $LMCACHE_COMMIT_SHA && \
+        cd .. && \
+        cd LMCache && \
+        source ${VIRTUAL_ENV}/bin/activate && \
+        uv build --wheel --no-build-isolation --out-dir /wheels  && \
+        cd ..; \
+    else \
+        echo "Skipping LMCache build on ARM64 (infinistore dependency lacks ARM wheels)"; \
+    fi
 
 # Use existing virtual environment at /opt/vllm
 WORKDIR /workspace/vllm

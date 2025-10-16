@@ -116,19 +116,22 @@ jobs:
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build & Push (official action)
-        id: build-and-push
+      - name: Build & Push AMD64
+        id: build-amd64
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.cuda
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
-          provenance: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          provenance: false
+          cache-from: type=gha,scope=cuda-amd64
+          cache-to: type=gha,mode=max,scope=cuda-amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: >-
+            type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev,
+            push-by-digest=true,name-canonical=true,push=true
           github-token: ${{ secrets.GHCR_TOKEN }}
           secrets: |
             aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
@@ -137,10 +140,50 @@ jobs:
           DOCKER_BUILDKIT: "1"
           BUILDKIT_PROGRESS: "plain"
 
+      - name: Build & Push ARM64
+        id: build-arm64
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.cuda
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          cache-from: type=gha,scope=cuda-arm64
+          cache-to: type=gha,mode=max,scope=cuda-arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: >-
+            type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev,
+            push-by-digest=true,name-canonical=true,push=true
+          github-token: ${{ secrets.GHCR_TOKEN }}
+          secrets: |
+            aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
+            aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY_S3_BUCKET_ONLY }}
+        env:
+          DOCKER_BUILDKIT: "1"
+          BUILDKIT_PROGRESS: "plain"
+
+      - name: Create and push manifest
+        id: manifest
+        run: |
+          # create manifest list from platform-specific digests
+          docker buildx imagetools create \
+            $(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ' | sed 's/ */ /g' | \
+              awk '{for(i=1;i<=NF;i++) printf("-t %s ", $i)}') \
+            ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev@${{ steps.build-amd64.outputs.digest }} \
+            ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev@${{ steps.build-arm64.outputs.digest }}
+
+          # extract final manifest digest
+          MANIFEST_DIGEST=$(docker buildx imagetools inspect \
+            ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev:${{ github.sha }} \
+            --format '{{.Manifest.Digest}}')
+          echo "digest=${MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev@${{ steps.build-and-push.outputs.digest }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev@${{ steps.manifest.outputs.digest }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH,MEDIUM'
