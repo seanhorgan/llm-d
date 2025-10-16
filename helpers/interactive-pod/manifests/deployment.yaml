@@ -6,7 +6,6 @@ metadata:
     app: interactive-pod
 spec:
   replicas: 1
-  revisionHistoryLimit: 2
   strategy:
     type: Recreate # don't run two interactive pods at once during updates
   selector:
@@ -29,14 +28,21 @@ spec:
           resources:
             requests:
               cpu: "8"
-              memory: "4Gi"
+              memory: "16Gi"
             limits:
               cpu: "8"
-              memory: "4Gi"
+              memory: "16Gi"
           env:
             - name: NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config-vol
+              mountPath: /.cache
+      volumes:
+        - name: config-vol
+          emptyDir: {}
+
       # optional: shorten shutdowns for faster restarts
       terminationGracePeriodSeconds: 10
