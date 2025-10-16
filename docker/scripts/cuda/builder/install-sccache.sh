@@ -8,11 +8,24 @@ set -Eeu
 
 if [ "${USE_SCCACHE}" = "true" ]; then
     dnf install -y openssl-devel
+
+    # detect architecture
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+        SCCACHE_ARCH="x86_64"
+    elif [ "$ARCH" = "aarch64" ]; then
+        SCCACHE_ARCH="aarch64"
+    else
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+    fi
+
+    SCCACHE_VERSION="v0.11.0"
     mkdir -p /tmp/sccache
     cd /tmp/sccache
-    curl -sLO https://github.com/mozilla/sccache/releases/download/v0.10.0/sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz
-    tar -xf sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz
-    mv sccache-v0.10.0-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache
+    curl -sLO https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl.tar.gz
+    tar -xf sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl.tar.gz
+    mv sccache-${SCCACHE_VERSION}-${SCCACHE_ARCH}-unknown-linux-musl/sccache /usr/local/bin/sccache
     cd /tmp
     rm -rf /tmp/sccache
 
