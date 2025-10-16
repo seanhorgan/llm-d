@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -Eeu
 
 # builds compiled extension wheels (FlashInfer, DeepEP, DeepGEMM, pplx-kernels)
 #

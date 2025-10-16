@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -Eeu
 
 # builds and installs NVSHMEM from source with coreweave patch
 #

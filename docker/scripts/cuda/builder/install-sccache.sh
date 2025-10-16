@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -Eeu
 
 # installs sccache binary from github releases and verifies connectivity
 #

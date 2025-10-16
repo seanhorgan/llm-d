@@ -3,6 +3,7 @@
 #
 # Required environment variables:
 # - USE_SCCACHE: whether to configure and start sccache (true/false)
+# - TARGETPLATFORM: target platform for build (defaults to linux/amd64)
 
 if [ "${USE_SCCACHE}" = "true" ]; then
     # set up AWS credentials if secrets are available
@@ -23,6 +24,13 @@ if [ "${USE_SCCACHE}" = "true" ]; then
     export SCCACHE_REGION="us-west-2"
     export SCCACHE_S3_KEY_PREFIX="llm-d-cache/"
     export SCCACHE_IDLE_TIMEOUT=0
+
+    # use platform-specific unix socket to avoid port conflicts in multi-platform builds
+    case "${TARGETPLATFORM:-linux/amd64}" in
+        linux/arm64) export SCCACHE_SERVER_UDS="/tmp/sccache-arm64.sock" ;;
+        linux/amd64) export SCCACHE_SERVER_UDS="/tmp/sccache-amd64.sock" ;;
+        *) export SCCACHE_SERVER_UDS="/tmp/sccache.sock" ;;
+    esac
 
     if ! /usr/local/bin/sccache --start-server; then
         echo "Warning: sccache failed to start, continuing without cache" >&2

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -Eeu
 
 # installs base packages, EPEL, and CUDA repository
 #
