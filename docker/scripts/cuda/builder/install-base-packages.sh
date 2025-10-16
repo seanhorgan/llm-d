@@ -13,6 +13,8 @@ dnf config-manager --set-enabled epel
 DOWNLOAD_ARCH=""
 if [ "$(uname -m)" = "amd64" ] || [ "$(uname -m)" = "x86_64" ]; then
     DOWNLOAD_ARCH="x86_64"
+elif [ "$(uname -m)" = "aarch64" ]; then
+    DOWNLOAD_ARCH="aarch64"
 fi
 
 dnf config-manager --add-repo "https://developer.download.nvidia.com/compute/cuda/repos/rhel9/${DOWNLOAD_ARCH}/cuda-rhel9.repo"
