@@ -89,9 +89,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [linux/amd64, linux/arm64]
-    runs-on: vllm-runner
+        include:
+          - platform: linux/amd64
+            runner: vllm-runner
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
+      - name: Free disk space (ARM only)
+        if: matrix.platform == 'linux/arm64'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
