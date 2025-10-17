@@ -408,18 +408,20 @@ RUN --mount=type=cache,target=/var/cache/git \
     git -C /opt/vllm-source config --system --add safe.directory /opt/vllm-source && \
     git -C /opt/vllm-source fetch --depth=1 origin "${VLLM_COMMIT_SHA}" || true && \
     git -C /opt/vllm-source checkout -q "${VLLM_COMMIT_SHA}" && \
-    export WHEEL_URL=$(pip install \
-        --no-cache-dir \
-        --no-index \
-        --no-deps \
-        --find-links "https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/" \
-        --only-binary=:all: \
-        --pre vllm \
-        --dry-run \
-        --disable-pip-version-check \
-        -qqq \
-        --report - \
-        2>/dev/null | jq -r '.install[0].download_info.url'); \
+    export WHEEL_URL="https://wheels.vllm.ai/950cf9e58eefd8e6436eb04b442184353c06a571/vllm-0.11.1rc2.dev135%2Bg950cf9e58-cp38-abi3-manylinux1_x86_64.whl" && \
+    \
+    # export WHEEL_URL=$(pip install \
+    #     --no-cache-dir \
+    #     --no-index \
+    #     --no-deps \
+    #     --find-links "https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/" \
+    #     --only-binary=:all: \
+    #     --pre vllm \
+    #     --dry-run \
+    #     --disable-pip-version-check \
+    #     -qqq \
+    #     --report - \
+    #     2>/dev/null | jq -r '.install[0].download_info.url'); \
     if [ "${VLLM_PREBUILT}" = "1" ]; then \
         if [ -z "${WHEEL_URL}" ]; then \
             echo "VLLM_PREBUILT set but no platform compatible wheel exists for: https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/"; \
