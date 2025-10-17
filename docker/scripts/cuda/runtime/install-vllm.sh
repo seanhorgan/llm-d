@@ -42,11 +42,12 @@ case "${ARCH}" in
 esac
 
 # try to find wheel with correct platform tag
-WHEEL_INDEX="https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/"
-WHEEL_URL=$(curl -sL "${WHEEL_INDEX}" | grep -oP "vllm-[^\"]+${PLATFORM_TAG}.whl" | head -1)
+WHEEL_INDEX="https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/"
+WHEEL_URL=$(curl -sL "${WHEEL_INDEX}" | grep -o "href=\"[^\"]*${PLATFORM_TAG}[^\"]*\"" | cut -d'"' -f2 | sed 's|^\.\./||' | head -1)
 
 if [ -n "${WHEEL_URL}" ]; then
-  WHEEL_URL="${WHEEL_INDEX}${WHEEL_URL}"
+  # wheel is in parent directory relative to /vllm/ listing
+  WHEEL_URL="https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/${WHEEL_URL}"
   echo "Found wheel for ${PLATFORM_TAG}: ${WHEEL_URL}"
 else
   echo "No wheel found for platform ${PLATFORM_TAG} at ${WHEEL_INDEX}"
@@ -54,7 +55,7 @@ fi
 
 if [ "${VLLM_PREBUILT}" = "1" ]; then
   if [ -z "${WHEEL_URL}" ]; then
-    echo "VLLM_PREBUILT set but no platform compatible wheel exists for: https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/"
+    echo "VLLM_PREBUILT set but no platform compatible wheel exists for: https://wheels.vllm.ai/${VLLM_COMMIT_SHA}/vllm/"
     exit 1
   fi
   INSTALL_PACKAGES+=("${WHEEL_URL}")
