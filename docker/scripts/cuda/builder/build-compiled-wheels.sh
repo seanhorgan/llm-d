@@ -22,10 +22,6 @@ source "${VIRTUAL_ENV}/bin/activate"
 # shellcheck source=/dev/null
 source /usr/local/bin/setup-sccache
 
-if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then
-    export TORCH_CUDA_ARCH_LIST="9.0a+PTX"
-fi
-
 # install build tools
 uv pip install build cuda-python numpy setuptools-scm ninja
 

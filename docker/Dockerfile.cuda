@@ -75,8 +75,8 @@ RUN --mount=type=cache,target=/var/cache/git \
     TARGETPLATFORM=${TARGETPLATFORM} /tmp/build-gdrcopy.sh && \
     rm /tmp/build-gdrcopy.sh
 
-ENV CPPFLAGS="-I$NVSHMEM_DIR/include ${CPPFLAGS}" \
-    LDFLAGS="-L$NVSHMEM_DIR/lib ${LDFLAGS}"
+ENV CPPFLAGS="-I/usr/include/nvshmem_${CUDA_MAJOR} ${CPPFLAGS}" \
+    LDFLAGS="-L/usr/lib64/nvshmem/${CUDA_MAJOR} ${LDFLAGS}"
 
 # Create wheels directory
 RUN mkdir -p /wheels
