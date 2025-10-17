@@ -334,7 +334,7 @@ grafana:
       datasources:
       - name: Prometheus
         type: prometheus
-        url: http://${RELEASE_NAME}-kube-prom-prometheus.${MONITORING_NAMESPACE}.svc.cluster.local:9090
+        url: http://${RELEASE_NAME}-kube-prometheus-stack-prometheus.${MONITORING_NAMESPACE}.svc.cluster.local:9090
         access: proxy
         isDefault: true
 prometheus:
@@ -375,7 +375,7 @@ grafana:
       datasources:
       - name: Prometheus
         type: prometheus
-        url: http://${RELEASE_NAME}-kube-prom-prometheus.${MONITORING_NAMESPACE}.svc.cluster.local:9090
+        url: http://${RELEASE_NAME}-kube-prometheus-stack-prometheus.${MONITORING_NAMESPACE}.svc.cluster.local:9090
         access: proxy
         isDefault: true
 prometheus:
