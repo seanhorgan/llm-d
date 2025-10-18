@@ -235,7 +235,7 @@ jobs:
           # extract final manifest digest
           MANIFEST_DIGEST=$(docker buildx imagetools inspect \
             ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev:sha-${GITHUB_SHA::7} \
-            --format '{{.Digest}}')
+            | awk '/^Digest:/ {print $2}')
           echo "digest=${MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
 
       - name: Run Trivy vulnerability scanner
