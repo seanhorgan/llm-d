@@ -56,7 +56,7 @@ ENV VLLM_TARGET_DEVICE=xpu
 ENV VLLM_WORKER_MULTIPROC_METHOD=spawn
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 setup.py install
+    pip install -v .
 
 CMD ["/bin/bash"]
 
