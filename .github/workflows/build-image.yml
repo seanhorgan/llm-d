@@ -181,12 +181,6 @@ jobs:
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Set platform variables
-        id: platform
-        run: |
-          ARCH=$(echo "${{ matrix.platform }}" | cut -d/ -f2)
-          echo "arch=${ARCH}" >> $GITHUB_OUTPUT
-
       - name: Build & Push
         id: build
         uses: docker/build-push-action@v5
@@ -198,7 +192,8 @@ jobs:
           provenance: false
           build-args: |
             TARGETOS=${{ matrix.os }}
-            BASE_IMAGE_SUFFIX=${{ matrix.base_image_suffix }}
+            BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
+            FINAL_BASE_IMAGE_SUFFIX=${{ matrix.base_image_suffix }}
             VLLM_REPO=${{ inputs.vllm_repo || 'https://github.com/vllm-project/vllm.git' }}
             VLLM_COMMIT_SHA=${{ inputs.vllm_commit_sha || 'b8b302cde434df8c9289a2b465406b47ebab1c2d' }}
             VLLM_PRECOMPILED_WHEEL_COMMIT=${{ inputs.vllm_precompiled_wheel_commit || inputs.vllm_commit_sha || '' }}

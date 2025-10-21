@@ -4,13 +4,22 @@ ARG CUDA_PATCH=1
 ARG TARGETOS=rhel
 ARG BASE_IMAGE_SUFFIX=ubi9
 
+# Important: For Ubuntu builds, we use an older version (20.04) in the build stage
+# to maintain broad glibc compatibility. Binaries built with newer glibc versions
+# are not backwards compatible with OSes using earlier glibc versions.
+# Runtime stage can use newer Ubuntu (22.04) for updated dependencies.
+# See: https://github.com/vllm-project/vllm/blob/main/docker/Dockerfile#L18-L24
+ARG BUILD_BASE_IMAGE_SUFFIX=${BASE_IMAGE_SUFFIX}
+ARG FINAL_BASE_IMAGE_SUFFIX=${BASE_IMAGE_SUFFIX}
+
 # ============================================================================
 # BUILD STAGE - Install build dependencies and create wheels
 # ============================================================================
-FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-${BASE_IMAGE_SUFFIX} AS builder
+FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-${BUILD_BASE_IMAGE_SUFFIX} AS builder
 
 ARG TARGETPLATFORM
 ARG TARGETOS=rhel
+ARG BUILD_BASE_IMAGE_SUFFIX=ubi9
 ARG CUDA_MAJOR=12
 ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
@@ -167,10 +176,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ============================================================================
 # RUNTIME STAGE - Minimal runtime image
 # ============================================================================
-FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-${BASE_IMAGE_SUFFIX} AS runtime
+FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-${FINAL_BASE_IMAGE_SUFFIX} AS runtime
 
 ARG TARGETOS=rhel
-ARG BASE_IMAGE_SUFFIX=ubi9
+ARG FINAL_BASE_IMAGE_SUFFIX=ubi9
 ARG CUDA_MAJOR=12
 ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
