@@ -257,7 +257,7 @@ RUN export UV_INSTALL_DIR=/usr/local/bin && \
 COPY --from=builder /wheels/*.whl /tmp/wheels/
 
 # Create the vllm user
-RUN useradd --uid 2000 --gid 0 vllm && \
+RUN useradd --uid 2000 --gid 0 -m vllm && \
     touch /home/vllm/.bashrc
 
 # Create the vllm workspace with permissions to swap commits and remotes
