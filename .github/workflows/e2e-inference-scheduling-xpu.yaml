@@ -112,9 +112,32 @@ jobs:
       - name: Deploy guide
         run: |
           cd guides/inference-scheduling
+
+          # Deploy infrastructure and GAIE first (without image override)
+          echo "Deploying infrastructure release..."
           RELEASE_NAME_POSTFIX=${RELEASE_NAME_POSTFIX} \
-          helmfile apply -e xpu -n "${NAMESPACE}" ${HELM_SET_IMAGE} \
-            | tee ~/inference-scheduling-deployment.log
+          helmfile apply -e xpu -n "${NAMESPACE}" \
+            --selector 'name=infra-inference-scheduling-xpu' \
+            | tee ~/inference-scheduling-xpu-deployment.log
+          echo "---------------------------------------" >> ~/inference-scheduling-xpu-deployment.log
+
+          echo "Deploying GAIE release..."
+          RELEASE_NAME_POSTFIX=${RELEASE_NAME_POSTFIX} \
+          helmfile apply -e xpu -n "${NAMESPACE}" \
+            --selector 'name=gaie-inference-scheduling-xpu' \
+            | tee -a ~/inference-scheduling-xpu-deployment.log
+          echo "---------------------------------------" >> ~/inference-scheduling-xpu-deployment.log
+
+          # Deploy model service with image override if provided
+          echo "Deploying model service release..."
+          if [ -n "${HELM_SET_IMAGE}" ]; then
+            echo "Applying custom image settings: ${HELM_SET_IMAGE}"
+          fi
+          RELEASE_NAME_POSTFIX=${RELEASE_NAME_POSTFIX} \
+          helmfile apply -e xpu -n "${NAMESPACE}" \
+            --selector 'name=ms-inference-scheduling-xpu' \
+            ${HELM_SET_IMAGE} \
+            | tee -a ~/inference-scheduling-xpu-deployment.log
           echo "---------------------------------------" >> ~/inference-scheduling-xpu-deployment.log
 
       - name: fetch helm manifests - prepare for upload

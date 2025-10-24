@@ -113,9 +113,32 @@ jobs:
       - name: Deploy guide
         run: |
           cd guides/pd-disaggregation
+          
+          # Deploy infrastructure and GAIE first (without image override)
+          echo "Deploying infrastructure release..."
           RELEASE_NAME_POSTFIX=${RELEASE_NAME_POSTFIX} \
-          helmfile apply -e xpu -n "${NAMESPACE}" ${HELM_SET_IMAGE} \
+          helmfile apply -e xpu -n "${NAMESPACE}" \
+            --selector 'name=infra-pd-xpu' \
             | tee ~/pd-xpu-deployment.log
+          echo "---------------------------------------" >> ~/pd-xpu-deployment.log
+          
+          echo "Deploying GAIE release..."
+          RELEASE_NAME_POSTFIX=${RELEASE_NAME_POSTFIX} \
+          helmfile apply -e xpu -n "${NAMESPACE}" \
+            --selector 'name=gaie-pd-xpu' \
+            | tee -a ~/pd-xpu-deployment.log
+          echo "---------------------------------------" >> ~/pd-xpu-deployment.log
+          
+          # Deploy model service with image override if provided
+          echo "Deploying model service release..."
+          if [ -n "${HELM_SET_IMAGE}" ]; then
+            echo "Applying custom image settings: ${HELM_SET_IMAGE}"
+          fi
+          RELEASE_NAME_POSTFIX=${RELEASE_NAME_POSTFIX} \
+          helmfile apply -e xpu -n "${NAMESPACE}" \
+            --selector 'name=ms-pd-xpu' \
+            ${HELM_SET_IMAGE} \
+            | tee -a ~/pd-xpu-deployment.log
           echo "---------------------------------------" >> ~/pd-xpu-deployment.log
 
       - name: fetch helm manifests - prepare for upload
