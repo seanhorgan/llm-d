@@ -253,6 +253,10 @@ RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
 RUN export UV_INSTALL_DIR=/usr/local/bin && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
     uv venv /opt/vllm --python ${PYTHON_VERSION} && \
+    rm -f /usr/bin/python3 /usr/bin/python3-config /usr/bin/pip && \
+    ln -s /opt/vllm/bin/python3 /usr/bin/python3 && \
+    ln -s /opt/vllm/bin/python3-config /usr/bin/python3-config && \
+    ln -s /opt/vllm/bin/pip /usr/bin/pip && \
     uv pip install --no-cache -U wheel
 
 # Copy compiled wheels
