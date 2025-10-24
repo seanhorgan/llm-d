@@ -43,6 +43,18 @@ elif [ "$TARGETOS" = "rhel" ]; then
     setup_rhel_repos "$DOWNLOAD_ARCH"
     mapfile -t INSTALL_PKGS < <(load_layered_packages rhel "builder-packages.json" "cuda")
     install_packages rhel "${INSTALL_PKGS[@]}"
+
+    rpm --import https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox
+    curl >/etc/yum.repos.d/mellanox_mlnx_ofed.repo https://linux.mellanox.com/public/repo/mlnx_ofed/24.10-0.7.0.0/rhel9.5/mellanox_mlnx_ofed.repo
+    dnf install libnl3-devel \
+        --enablerepo=temp-alma-appstream \
+        --repofrompath=temp-alma-appstream,https://mirror.grid.uchicago.edu/pub/linux/alma/9/AppStream/x86_64/os/ \
+        --enablerepo=temp-alma-baseos \
+        --repofrompath=temp-alma-baseos,https://mirror.grid.uchicago.edu/pub/linux/alma/9/BaseOS/x86_64/os/ -qy --nogpgcheck
+
+    dnf -q install -y --allowerasing \
+        rdma-core-devel
+
     cleanup_packages rhel
 
 else
