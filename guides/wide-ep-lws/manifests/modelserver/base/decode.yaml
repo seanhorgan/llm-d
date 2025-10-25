@@ -42,7 +42,7 @@ spec:
               sizeLimit: 3Gi # roughly 32MB per local DP plus scratch space
         containers:
         - name: vllm-worker
-          image: ghcr.io/llm-d/llm-d-cuda-dev:sha-ddea877
+          image: ghcr.io/llm-d/llm-d-cuda-dev:sha-6225536
           securityContext:
             capabilities:
               add:
