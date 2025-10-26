@@ -10,5 +10,8 @@
     "git": "git",
     "curl": "curl",
     "gcc": "gcc"
-  }
+  },
+  "ubuntu_only": [
+    "hwloc"
+  ]
 }
