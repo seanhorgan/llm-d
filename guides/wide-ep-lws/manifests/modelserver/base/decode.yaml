@@ -39,10 +39,10 @@ spec:
           - name: dshm
             emptyDir:
               medium: Memory
-              sizeLimit: 2Gi # 2Gi for NCCL 2.27 to be safe
+              sizeLimit: 3Gi # roughly 32MB per local DP plus scratch space
         containers:
         - name: vllm-worker
-          image: ghcr.io/llm-d/llm-d-cuda-dev:pr-230@sha256:744738e06eabc2dbf53b299d01572f149a25c752d31e7dd8bb828776c509076c
+          image: ghcr.io/llm-d/llm-d-cuda-dev:sha-6225536
           securityContext:
             capabilities:
               add:
@@ -56,6 +56,10 @@ spec:
             - -c
           args:
             - |-
+              # Clear /dev/shm on start to prevent running out of space when crashes occur
+              # https://github.com/llm-d/llm-d/issues/352
+              find /dev/shm -type f -delete
+
               #################
               # RUN vLLM decode worker
               #################
@@ -67,7 +71,10 @@ spec:
               # --enable-dbo:  Dual batch overlap (DBO) overlaps compute with collective communication.
               # --enable-eplb: Expert-parallel load balancing reduces EP load imbalance by replicating heavily-used experts Performance-memory tradeoff: on DeepSeekV3 eplb uses an extra 2GB per redundant expert per GPU Divisibility constraint: num_routed_experts (256 for DSv3) + num_redundant_experts must be divisible by the number of GPUs.
 
-              source /opt/vllm/bin/activate
+              # Create an environment variable for the vllm venv path so we can
+              # override it for the GKE image as a temporary workaround.
+              # TODO: Once we consolidate the images, we can just hard-code it.
+              source ${VENV_PATH}/bin/activate
               exec vllm serve \
                 deepseek-ai/DeepSeek-R1-0528 \
                 --port 8200 \
@@ -127,8 +134,6 @@ spec:
             value: eth0
           - name: NCCL_SOCKET_IFNAME
             value: eth0
-          - name: NCCL_IB_HCA
-            value: ibp
           - name: VLLM_LOGGING_LEVEL
             value: INFO
           - name: VLLM_NIXL_SIDE_CHANNEL_HOST
@@ -139,18 +144,36 @@ spec:
           - containerPort: 8200
             name: metrics
             protocol: TCP
-          readinessProbe:
+          startupProbe:
+            httpGet:
+              path: /v1/models
+              port: 8200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
             httpGet:
               path: /health
               port: 8200
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v1/models
+              port: 8200
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             limits:
-              ephemeral-storage: 64Gi
+              ephemeral-storage: 1Ti
               memory: 512Gi
               nvidia.com/gpu: "8"
             requests:
               cpu: 32
-              ephemeral-storage: 64Gi
+              ephemeral-storage: 1Ti
               memory: 512Gi
               nvidia.com/gpu: "8"
           volumeMounts:
