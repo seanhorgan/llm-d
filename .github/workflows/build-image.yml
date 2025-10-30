@@ -285,8 +285,9 @@ jobs:
           # build the list of source images (by digest)
           sources=""
           for digest in *; do
-            sources="$sources ${IMAGE_BASE}@sha256:$digest"
+            sources="${sources} ${IMAGE_BASE}@sha256:$digest"
           done
+          sources="${sources# }"
 
           # build tag list
           tags="-t ${IMAGE_BASE}:sha-${SHORT_SHA}"
