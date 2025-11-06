@@ -35,7 +35,7 @@ on:
         type: string
 jobs:
   deploy_and_validate:
-    runs-on: ubuntu-latest
+    runs-on: cpu
     env:
       NAMESPACE: "llm-d-cpu-is"
       GATEWAY_TYPE: "istio"
