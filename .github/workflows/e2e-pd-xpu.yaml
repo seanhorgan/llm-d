@@ -129,16 +129,24 @@ jobs:
           done
 
       - name: Wait for all pods to be ready
-        continue-on-error: true
         id: wait_pods
         run: |
-          kubectl wait pod \
+          echo "Waiting for all pods to be ready..."
+          if kubectl wait pod \
             --for=condition=Ready \
             --all \
             -n "${NAMESPACE}" \
-            --timeout=10m
-          echo "✅ All pods are ready."
-          kubectl get pods -n "${NAMESPACE}"
+            --timeout=10m; then
+            echo "✅ All pods are ready."
+            kubectl get pods -n "${NAMESPACE}"
+          else
+            echo "❌ Pods failed to become ready within timeout"
+            echo "=== Pod Status ==="
+            kubectl get pods -n "${NAMESPACE}"
+            echo "=== Pod Descriptions ==="
+            kubectl describe pods -n "${NAMESPACE}"
+            exit 1
+          fi
 
       - name: Check gateway pod is up
         if: always()

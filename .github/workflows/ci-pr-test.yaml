@@ -80,7 +80,7 @@ jobs:
   # Call the XPU Inference Scheduling test workflow
   test-xpu-inference-scheduling:
     needs: [detect-changes, build-images]
-    if: ${{ always() && !cancelled() && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-inference-scheduling == 'true') }}
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-inference-scheduling == 'true') }}
     uses: ./.github/workflows/e2e-inference-scheduling-xpu.yaml
     with:
       pr_or_branch: ${{ github.event.inputs.pr_or_branch || github.event.pull_request.number }}
@@ -92,7 +92,7 @@ jobs:
   # Call the XPU PD test workflow
   test-xpu-pd:
     needs: [detect-changes, build-images]
-    if: ${{ always() && !cancelled() && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-pd-disaggregation == 'true') }}
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-pd-disaggregation == 'true') }}
     uses: ./.github/workflows/e2e-pd-xpu.yaml
     with:
       pr_or_branch: ${{ github.event.inputs.pr_or_branch || github.event.pull_request.number }}
