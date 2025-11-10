@@ -40,7 +40,7 @@ CMD ["bash", "-c", "source /root/.bashrc && exec bash"]
 
 # Clone vLLM and build for XPU
 WORKDIR /workspace
-ARG VLLM_VERSION=v0.11.1rc5
+ARG VLLM_VERSION=v0.11.0
 RUN --mount=type=cache,target=/var/cache/git \
     git clone https://github.com/vllm-project/vllm.git && \
     cd vllm && \
@@ -48,7 +48,6 @@ RUN --mount=type=cache,target=/var/cache/git \
 
 
 WORKDIR /workspace/vllm
-
 
 # suppress the python externally managed environment error
 RUN python3 -m pip config set global.break-system-packages true
@@ -83,8 +82,7 @@ RUN python3 -m pip install -e tests/vllm_test_utils
 RUN if [ -f /workspace/vllm/tools/install_nixl_from_source_ubuntu.py ]; then \
         python3 /workspace/vllm/tools/install_nixl_from_source_ubuntu.py; \
     else \
-        echo "ERROR: /workspace/vllm/tools/install_nixl_from_source_ubuntu.py not found!" >&2; \
-        exit 1; \
+        echo "WARNING: /workspace/vllm/tools/install_nixl_from_source_ubuntu.py not found, skipping nixl installation" >&2; \
     fi
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib/python3.12/dist-packages/.nixl.mesonpy.libs/plugins/"
 
