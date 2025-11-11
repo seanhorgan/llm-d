@@ -80,7 +80,10 @@ jobs:
   # Call the XPU Inference Scheduling test workflow
   test-xpu-inference-scheduling:
     needs: [detect-changes, build-images]
-    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-inference-scheduling == 'true') }}
+    # Run tests if:
+    # 1. It's a manual workflow_dispatch, OR
+    # 2. Related files changed AND (build succeeded OR build was skipped)
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-inference-scheduling == 'true') && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
     uses: ./.github/workflows/e2e-inference-scheduling-xpu.yaml
     with:
       pr_or_branch: ${{ github.event.inputs.pr_or_branch || github.event.pull_request.number }}
@@ -92,7 +95,10 @@ jobs:
   # Call the XPU PD test workflow
   test-xpu-pd:
     needs: [detect-changes, build-images]
-    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-pd-disaggregation == 'true') }}
+    # Run tests if:
+    # 1. It's a manual workflow_dispatch, OR
+    # 2. Related files changed AND (build succeeded OR build was skipped)
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.xpu-pd-disaggregation == 'true') && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
     uses: ./.github/workflows/e2e-pd-xpu.yaml
     with:
       pr_or_branch: ${{ github.event.inputs.pr_or_branch || github.event.pull_request.number }}
