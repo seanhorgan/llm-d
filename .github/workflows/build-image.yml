@@ -486,7 +486,7 @@ jobs:
     if: ${{ needs.detect-changes.outputs.cpu == 'true' }}
     strategy:
       fail-fast: false
-    runs-on: vllm-runner
+    runs-on: cpu
     steps:
       - name: Checkout push ref
         if: github.event_name == 'push'
