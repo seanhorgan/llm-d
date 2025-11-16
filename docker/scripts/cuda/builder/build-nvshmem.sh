@@ -36,6 +36,7 @@ fi
 # For more info, see: https://github.com/NVIDIA/nvshmem/releases/tag/v3.4.5-0, specifically regarding NVSHMEM_HCA_PREFIX
 for i in /tmp/patches/cks_nvshmem"${NVSHMEM_VERSION}".patch /tmp/patches/nvshmem_zero_ibv_ah_attr_"${NVSHMEM_VERSION}".patch; do
     if [[ -f $i ]]; then
+        echo "Applying patch: $i"
         git apply $i
     else
         echo "Unable to find patch matching nvshmem version ${NVSHMEM_VERSION}: $i"
