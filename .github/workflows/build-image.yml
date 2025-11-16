@@ -153,7 +153,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.NEW_GHCR_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -186,7 +186,7 @@ jobs:
             FINAL_BASE_IMAGE_SUFFIX=${{ matrix.base_image_suffix }}
             VLLM_REPO=${{ inputs.vllm_repo || 'https://github.com/vllm-project/vllm.git' }}
             VLLM_COMMIT_SHA=${{ inputs.vllm_commit_sha || 'b8b302cde434df8c9289a2b465406b47ebab1c2d' }}
-          github-token: ${{ secrets.NEW_GHCR_TOKEN }}
+          github-token: ${{ secrets.GHCR_TOKEN }}
           secrets: |
             aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
             aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY_S3_BUCKET_ONLY }}
@@ -221,7 +221,7 @@ jobs:
           outputs: >-
             type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }},
             push-by-digest=true,name-canonical=true,push=true
-          github-token: ${{ secrets.NEW_GHCR_TOKEN }}
+          github-token: ${{ secrets.GHCR_TOKEN }}
         env:
           DOCKER_BUILDKIT: "1"
           BUILDKIT_PROGRESS: "plain"
@@ -333,7 +333,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.NEW_GHCR_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -386,7 +386,7 @@ jobs:
           skip-dirs: /root/.cache/uv
         env:
           TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.NEW_GHCR_TOKEN }}
+          TRIVY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -424,7 +424,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.NEW_GHCR_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and push the image
         id: build-and-push
@@ -456,7 +456,7 @@ jobs:
           skip-dirs: /root/.cache/uv
         env:
           TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.NEW_GHCR_TOKEN }}
+          TRIVY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
