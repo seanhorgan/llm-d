@@ -153,7 +153,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN_LLMD_IMAGE_BUILDS }}
 
       - name: Extract metadata
         id: meta
