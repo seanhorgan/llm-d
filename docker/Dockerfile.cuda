@@ -33,9 +33,8 @@ ARG CUDA_MAJOR=12
 ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
 ARG PYTHON_VERSION
-ARG NVSHMEM_VERSION
-ARG USE_SCCACHE=true
 
+ARG USE_SCCACHE=true
 
 WORKDIR /workspace
 
@@ -129,9 +128,9 @@ RUN --mount=type=cache,target=/var/cache/git \
     rm -f /tmp/build-ucx.sh
 
 # Build NVSHMEM
-ARG NVSHMEM_VERSION
 ARG NVSHMEM_USE_GIT="true"
 ARG NVSHMEM_REPO="https://github.com/NVIDIA/nvshmem.git"
+ARG NVSHMEM_VERSION
 # defined above when setting up paths
 ARG NVSHMEM_VERSION
 ARG NVSHMEM_CUDA_ARCHITECTURES="90a;100"
