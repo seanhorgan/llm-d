@@ -16,7 +16,7 @@ kubectl delete namespace llm-d
 minikube delete --all
 ```
 
-## Step 2: create minikube cluster with habana plugin supported
+## Step 2: Create minikube cluster
 ```shell
 minikube start --container-runtime=containerd  --cpus=64 --memory=128g --disk-size=100g
 kubectl describe nodes minikube
@@ -85,7 +85,7 @@ cd ../../..
 ## Step 6: Deploy Kgateway Gateway control plane
 ```shell
 cd guides/prereq/gateway-provider
-helmfile apply -f kgateway.helmfile.yaml
+helmfile apply -f istio.helmfile.yaml
 cd ../../..
 ```
 
@@ -129,20 +129,22 @@ This will deploy three main components in the `llm-d` namespace:
 helm list -n llm-d
 
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
-gaie-pd         llm-d           1               2025-10-26 17:13:28.037575686 -0700 PDT deployed        inferencepool-v1.0.1            v1.0.1
-infra-pd        llm-d           1               2025-10-26 17:13:27.313144347 -0700 PDT deployed        llm-d-infra-v1.3.3              v0.3.0
-ms-pd           llm-d           1               2025-10-26 17:13:29.982862829 -0700 PDT deployed        llm-d-modelservice-v0.2.11      v0.2.0
+gaie-pd         llm-d           1               2025-11-12 13:18:34.992380182 -0800 PST deployed        inferencepool-v1.0.1            v1.0.1
+infra-pd        llm-d           1               2025-11-12 13:18:34.146388572 -0800 PST deployed        llm-d-infra-v1.3.3              v0.3.0
+ms-pd           llm-d           1               2025-11-12 13:18:36.737735596 -0800 PST deployed        llm-d-modelservice-v0.2.11      v0.2.0
 
 ```
 
 ### Monitor Pod Status
 ```shell
 $ kubectl get pods -n llm-d
-NAME                                                READY   STATUS    RESTARTS   AGE
-gaie-pd-epp-586bf7b8cc-t9l4d                        1/1     Running   0          3h18m
-infra-pd-inference-gateway-56d75678f6-tqm7c         1/1     Running   0          3h18m
-ms-pd-llm-d-modelservice-decode-6f94857565-8bxwq    2/2     Running   0          3h18m
-ms-pd-llm-d-modelservice-prefill-79bbcb97c6-xt86h   1/1     Running   0          3h18m
+
+NAME                                                READY   STATUS    RESTARTS   AGE   IP            NODE       NOMINATED NODE   READINESS GATES
+gaie-pd-epp-586bf7b8cc-4v5jm                        1/1     Running   0          24m   10.244.0.28   minikube   <none>           <none>
+infra-pd-inference-gateway-istio-7b76f778d8-cx82c   1/1     Running   0          24m   10.244.0.27   minikube   <none>           <none>
+ms-pd-llm-d-modelservice-decode-85bbb98fb5-4gbzb    2/2     Running   0          24m   10.244.0.30   minikube   <none>           <none>
+ms-pd-llm-d-modelservice-prefill-6c4c87dcff-ghjrz   1/1     Running   0          24m   10.244.0.29   minikube   <none>           <none>
+
 
 ```
 
@@ -168,7 +170,7 @@ kubectl get httproute -n llm-d
 #### Method: Using Port Forwarding (Recommended)
 ```shell
 # Port forward to local
-kubectl port-forward -n llm-d service/infra-pd-inference-gateway 8086:80 &
+kubectl port-forward -n llm-d service/infra-pd-inference-gateway-istio 8086:80 &
 
 # Test health check
 curl -X GET "http://localhost:8086/health" -v
@@ -191,4 +193,17 @@ Expected output -
 
 ```shell
 {"id":"chatcmpl-5471a768-14e5-4de7-b2f3-38fe9aa62298","object":"chat.completion","created":1760594331,"model":"meta-llama/Llama-3.2-3B-Instruct","choices":[{"index":0,"message":{"role":"assistant","content":"Prefill-decode disaggregation is a technique used in Large Language Models (LLMs) to improve inference performance, particularly in scenarios where the input data is noisy, ambiguous, or has varying levels of relevance. Here are the benefits of prefill-decode disaggregation in LLM inference:\n\n1. **Improved accuracy**: Prefill-decode disaggregation helps to identify and filter out irrelevant or noisy input data, which can improve the overall accuracy of the LLM's predictions.\n2. **Reduced bias**: By disaggregating the input data, the model is less likely to be biased towards certain types of input, which can lead to more accurate and generalizable results.\n3. **Increased robustness**: Prefill-decode disaggregation makes the","refusal":null,"annotations":null,"audio":null,"function_call":null,"tool_calls":[],"reasoning_content":null},"logprobs":null,"finish_reason":"length","stop_reason":null,"token_ids":null}],"service_tier":null,"system_fingerprint":null,"usage":{"prompt_tokens":50,"total_tokens":200,"completion_tokens":150,"prompt_tokens_details":null},"prompt_logprobs":null,"prompt_token_ids":null,"kv_transfer_params":null}
+```
+```shell
+# Check routing_proxy for KV transfer 
+
+DECODE_POD=$(kubectl get pods -n llm-d -l llm-d.ai/role=decode -o jsonpath='{.items[0].metadata.name}')
+kubectl logs -n llm-d ${DECODE_POD} -c routing-proxy -f
+```
+Expected output -
+
+```shell
+I1112 21:35:11.208192       1 connector_nixlv2.go:103] "sending request to prefiller" logger="proxy server" url="10.244.0.29:8000" body="{\"kv_transfer_params\":{\"do_remote_decode\":true,\"do_remote_prefill\":false,\"remote_block_ids\":null,\"remote_engine_id\":null,\"remote_host\":null,\"remote_port\":null},\"max_tokens\":1,\"messages\":[{\"content\":\"Explain the benefits of prefill-decode disaggregation in LLM inference\",\"role\":\"user\"}],\"model\":\"meta-llama/Llama-3.2-3B-Instruct\",\"stream\":false,\"temperature\":0.7}"
+I1112 21:35:12.125625       1 connector_nixlv2.go:129] "received prefiller response" logger="proxy server" kv_transfer_params={"do_remote_decode":false,"do_remote_prefill":true,"remote_block_ids":[8],"remote_engine_id":"5f443848-0eda-46d6-a5fe-a293deb30eca","remote_host":"10.244.0.29","remote_port":5600,"tp_size":1}
+
 ```

@@ -17,7 +17,7 @@ environments:
       - ../prereq/gateway-provider/common-configurations/istio.yaml
   cpu: &CPU
     values:
-      - ../prereq/gateway-provider/common-configurations/kgateway.yaml
+      - ../prereq/gateway-provider/common-configurations/istio.yaml
   aks: &AKS
     <<: *IB
   default:
@@ -70,7 +70,7 @@ releases:
               enabled: false
     {{- end }}
     # Apply destination rule for anything istio
-    {{- if or (eq .Environment.Name "istio") (eq .Environment.Name "default") (eq .Environment.Name "istioBench") (eq .Environment.Name "aks") (eq .Environment.Name "xpu") }}
+    {{- if or (eq .Environment.Name "istio") (eq .Environment.Name "default") (eq .Environment.Name "istioBench") (eq .Environment.Name "aks") (eq .Environment.Name "xpu") (eq .Environment.Name "cpu") }}
       - provider:
           name: {{ .Environment.Values.provider.name }}
       - istio:

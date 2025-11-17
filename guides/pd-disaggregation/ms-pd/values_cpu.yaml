@@ -17,7 +17,7 @@ routing:
       # name: infra-pd-inference-gateway # set in helmfile
 
   proxy:
-    image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.2.0
+    image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.3.0
     imagePullPolicy: IfNotPresent
     connector: nixlv2
     secure: false
@@ -57,10 +57,18 @@ decode:
           --disable-hybrid-kv-cache-manager \
           --tensor-parallel-size 1 --max_model_len 32768 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both","kv_buffer_device":"cpu"}'
     env:
+      - name: VLLM_LOGGING_LEVEL
+        value: "DEBUG"
+      - name: NIXL_TELEMETRY_ENABLE
+        value: "1"
+      - name: VLLM_KV_CACHE_LAYOUT
+        value: "HND"
+      - name: UCX_NET_DEVICES
+        value: "all"
       - name: OMP_NUM_THREADS
         value: "64"
       - name: LD_LIBRARY_PATH
-        value: "/usr/lib/nixl_ofi:/usr/local/lib:/usr/lib:/opt/amazon/openmpi/lib:/usr/lib/habanalabs"
+        value: "/usr/local/lib:/usr/lib:/opt/amazon/openmpi/lib"
       - name: VLLM_NIXL_SIDE_CHANNEL_HOST
         valueFrom:
           fieldRef:
@@ -120,10 +128,18 @@ prefill:
           --disable-hybrid-kv-cache-manager \
           --tensor-parallel-size 1 --max_model_len 32768 --kv-transfer-config '{"kv_connector":"NixlConnector","kv_role":"kv_both","kv_buffer_device":"cpu"}'
     env:
+      - name: VLLM_LOGGING_LEVEL
+        value: "DEBUG"
+      - name: NIXL_TELEMETRY_ENABLE
+        value: "1"
+      - name: VLLM_KV_CACHE_LAYOUT
+        value: "HND"
+      - name: UCX_NET_DEVICES
+        value: "all"
       - name: OMP_NUM_THREADS
         value: "64"
       - name: LD_LIBRARY_PATH
-        value: "/usr/lib/nixl_ofi:/usr/local/lib:/usr/lib:/opt/amazon/openmpi/lib:/usr/lib/habanalabs"
+        value: "/usr/local/lib:/usr/lib:/opt/amazon/openmpi/lib"
       - name: VLLM_NIXL_SIDE_CHANNEL_HOST
         valueFrom:
           fieldRef:
