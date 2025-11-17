@@ -3,7 +3,9 @@ SHELL := /usr/bin/env bash
 # Defaults
 PROJECT_NAME ?= llm-d
 DOCKERFILE_DIR = docker
-ifeq ($(DEVICE), cuda-efa)
+ifeq ($(DEVICE), xpu)
+	DOCKERFILE ?= Dockerfile.xpu
+else ifeq ($(DEVICE), cuda-efa)
 	DOCKERFILE ?= Dockerfile.aws
 else
 	DOCKERFILE ?= Dockerfile.cuda
@@ -13,8 +15,7 @@ VERSION ?= v0.2.1
 # New tag to use if you would like to use `make image-retag`
 NEW_TAG ?= sha256...
 
-# DEVICE, options: ['cuda', 'cuda-efa']
-# Note: XPU uses Intel's official images from hub.docker.com/r/intel/vllm
+# DEVICE, options: ['cuda', 'xpu', 'cuda-efa']
 DEVICE ?= cuda
 
 IMAGE_BASE ?= ghcr.io/llm-d/$(PROJECT_NAME)-$(DEVICE)
@@ -34,6 +35,12 @@ PLATFORMS ?= linux/amd64 # linux/arm64 # linux/s390x,linux/ppc64le
 .PHONY: help
 help: ## Print help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@printf "\n\033[1mXPU Build Examples:\033[0m\n"
+	@printf "  \033[36mmake image-build DEVICE=xpu\033[0m                    # Build Intel XPU Docker image\n"
+	@printf "  \033[36mmake image-build DEVICE=xpu VERSION=v0.2.0\033[0m     # Build with specific version\n"
+	@printf "  \033[36mmake image-push DEVICE=xpu\033[0m                     # Push Intel XPU Docker image\n"
+	@printf "  \033[36mmake image-retag DEVICE=xpu NEW_TAG=test\033[0m                     # Re-Tag Intel XPU Docker image\n"
+	@printf "  \033[36mmake env DEVICE=xpu\033[0m                            # Show XPU environment variables\n"
 
 ##@ Development
 
