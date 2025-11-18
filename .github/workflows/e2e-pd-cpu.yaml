@@ -129,10 +129,10 @@ jobs:
             | tee ~/pd-cpu-deployment.log
           echo "---------------------------------------" >> ~/pd-cpu-deployment.log
 
-      - name: Apply HTTPRoute
-        run: |
-          cd guides/pd-disaggregation
-          kubectl apply -f httproute.yaml -n "${NAMESPACE}"
+      # - name: Apply HTTPRoute
+      #   run: |
+      #     cd guides/pd-disaggregation
+      #     kubectl apply -f httproute.yaml -n "${NAMESPACE}"
 
       - name: fetch helm manifests - prepare for upload
         run: |
