@@ -264,10 +264,25 @@ jobs:
       - name: Download all digests (best-effort)
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
+          path: /tmp/digests-raw
           pattern: digests-cuda-dev-*
-          merge-multiple: true
         continue-on-error: true
+
+      - name: Reorganize digests by OS
+        run: |
+          mkdir -p /tmp/digests/rhel /tmp/digests/ubuntu
+          shopt -s nullglob
+          for artifact_dir in /tmp/digests-raw/digests-cuda-dev-*; do
+            if [[ "$artifact_dir" == *-rhel-* ]]; then
+              cp -v "$artifact_dir"/* /tmp/digests/rhel/ 2>/dev/null || true
+            elif [[ "$artifact_dir" == *-ubuntu-* ]]; then
+              cp -v "$artifact_dir"/* /tmp/digests/ubuntu/ 2>/dev/null || true
+            fi
+          done
+          echo "=== RHEL digests ==="
+          ls -la /tmp/digests/rhel/ || echo "No RHEL digests"
+          echo "=== Ubuntu digests ==="
+          ls -la /tmp/digests/ubuntu/ || echo "No Ubuntu digests"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -323,9 +338,17 @@ jobs:
         if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
+          path: /tmp/digests-raw
           pattern: digests-cuda-dev-${{ matrix.os }}-*
-          merge-multiple: true
+
+      - name: Reorganize digests for manifest
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
+        run: |
+          mkdir -p /tmp/digests/${{ matrix.os }}
+          shopt -s nullglob
+          for artifact_dir in /tmp/digests-raw/digests-cuda-dev-${{ matrix.os }}-*; do
+            cp -v "$artifact_dir"/* /tmp/digests/${{ matrix.os }}/ 2>/dev/null || true
+          done
 
       - name: Debug digest files
         if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
