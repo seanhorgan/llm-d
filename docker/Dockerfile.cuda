@@ -173,7 +173,7 @@ ARG DEEPGEMM_VERSION="v2.1.0"
 ARG PPLX_KERNELS_REPO="https://github.com/perplexityai/pplx-kernels"
 ARG PPLX_KERNELS_SHA="12cecfda252e4e646417ac263d96e994d476ee5d"
 
-ARG FLASHINFER_VERSION="v0.3.1"
+ARG FLASHINFER_VERSION="v0.5.2"
 
 # Build compiled packages as wheels (only ones that need build tools)
 COPY docker/scripts/cuda/builder/build-compiled-wheels.sh /tmp/build-compiled-wheels.sh
@@ -287,7 +287,7 @@ ARG VLLM_REPO="https://github.com/wseaton/vllm.git"
 ARG VLLM_COMMIT_SHA="339074d994ccfb5106cb4af0a206d0f14462dcea"
 # vllm commit to use for precompiled wheel lookup (defaults to VLLM_COMMIT_SHA)
 # useful for testing feature branches with python-only changes against merge-base binaries
-ARG VLLM_PRECOMPILED_WHEEL_COMMIT
+ARG VLLM_PRECOMPILED_WHEEL_COMMIT="a2e9ebe9e242295a58e400835ef98a14b29c4fb0"
 
 # Dictates if we should pull a production wheel for the vllm commit sha
 ARG VLLM_PREBUILT=0
