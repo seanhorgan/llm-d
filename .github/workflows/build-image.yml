@@ -238,9 +238,9 @@ jobs:
       - name: Export digest
         if: ${{ steps.build-image-final-layer.outputs.digest != '' }}
         run: |
-          mkdir -p /tmp/digests
+          mkdir -p /tmp/digests/${{ matrix.os }}
           digest="${{ steps.build-image-final-layer.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          touch "/tmp/digests/${{ matrix.os }}/${digest#sha256:}"
 
       - name: Upload digest
         if: ${{ steps.build-image-final-layer.outputs.digest != '' }}
@@ -264,7 +264,7 @@ jobs:
       - name: Download all digests (best-effort)
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests/**/
+          path: /tmp/digests
           pattern: digests-cuda-dev-*
           merge-multiple: true
         continue-on-error: true
@@ -281,14 +281,14 @@ jobs:
         shell: bash
         run: |
           shopt -s nullglob
-          all=(/tmp/digests/*)
-          rhel=(/tmp/digests/digests-cuda-dev-rhel-*)
-          ubuntu=(/tmp/digests/digests-cuda-dev-ubuntu-*)
+          rhel=(/tmp/digests/rhel/*)
+          ubuntu=(/tmp/digests/ubuntu/*)
 
-          any=false; [ ${#all[@]} -gt 0 ] && any=true
+          any=false; [ ${#rhel[@]} -gt 0 ] || [ ${#ubuntu[@]} -gt 0 ] && any=true
           rhel_ok=false;   [ ${#rhel[@]} -gt 0 ] && rhel_ok=true
           ubuntu_ok=false; [ ${#ubuntu[@]} -gt 0 ] && ubuntu_ok=true
 
+          echo "Downloaded ${#rhel[@]} RHEL digest(s), ${#ubuntu[@]} Ubuntu digest(s)"
           echo "any_succeeded=${any}"   >> "$GITHUB_OUTPUT"
           echo "rhel_ok=${rhel_ok}"     >> "$GITHUB_OUTPUT"
           echo "ubuntu_ok=${ubuntu_ok}" >> "$GITHUB_OUTPUT"
@@ -304,11 +304,23 @@ jobs:
           # RHEL is the default image (no suffix in image name)
           - os: rhel
             image_suffix: ""
+            os_ok: rhel_ok
           # Ubuntu images are tagged with -ubuntu suffix
           - os: ubuntu
             image_suffix: "-ubuntu"
+            os_ok: ubuntu_ok
     steps:
+      - name: Check if OS build succeeded
+        id: should-run
+        run: |
+          os_succeeded="${{ needs.cuda-success-check.outputs[matrix.os_ok] }}"
+          echo "os_succeeded=${os_succeeded}" >> $GITHUB_OUTPUT
+          if [ "${os_succeeded}" != "true" ]; then
+            echo "Skipping manifest creation for ${{ matrix.os }} - no successful builds"
+          fi
+
       - name: Download digests
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
@@ -316,19 +328,22 @@ jobs:
           merge-multiple: true
 
       - name: Debug digest files
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         run: |
           echo "=== Contents of /tmp/digests ==="
           ls -la /tmp/digests
-          echo "=== Files matched by glob * ==="
-          cd /tmp/digests && printf '%s\n' *
+          echo "=== Files matched by glob in ${{ matrix.os }}/ ==="
+          cd /tmp/digests/${{ matrix.os }} && printf '%s\n' *
           echo "=== Test manifest command construction ==="
-          cd /tmp/digests && \
+          cd /tmp/digests/${{ matrix.os }} && \
             printf '${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }}@sha256:%s ' *
 
       - name: Set up Docker Buildx
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -336,6 +351,7 @@ jobs:
           password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Extract metadata
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -347,8 +363,9 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Create and push manifest
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         id: manifest
-        working-directory: /tmp/digests
+        working-directory: /tmp/digests/${{ matrix.os }}
         run: |
           set -x
           SHORT_SHA="${{ needs.cuda-success-check.outputs.shortsha }}"
@@ -360,11 +377,11 @@ jobs:
           done
 
           # create manifest and tag it
-          docker buildx imagetools create \
-            -t ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }}:pr-${{
-              github.event.pull_request.number }} \
-            -t ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }}:sha-${SHORT_SHA} \
-            $sources
+          tags="-t ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }}:sha-${SHORT_SHA}"
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            tags="$tags -t ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }}:pr-${{ github.event.pull_request.number }}"
+          fi
+          docker buildx imagetools create $tags $sources
 
           # extract final manifest digest
           MANIFEST_DIGEST=$(docker buildx imagetools inspect \
@@ -373,6 +390,7 @@ jobs:
           echo "digest=${MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
 
       - name: Run Trivy vulnerability scanner
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: >-
@@ -389,11 +407,13 @@ jobs:
           TRIVY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
 
       - name: Upload Trivy scan results to GitHub Security tab
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
 
       - name: Display vulnerability summary
+        if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
         run: |
           echo "=== Vulnerability Scan Summary ==="
           if [ -f trivy-results.sarif ]; then
