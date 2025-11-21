@@ -1,6 +1,3 @@
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
 # Well-lit Path: Wide Expert Parallelism (EP/DP) with LeaderWorkerSet
 
 ## Overview
