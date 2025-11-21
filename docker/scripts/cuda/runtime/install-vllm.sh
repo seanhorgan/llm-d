@@ -57,7 +57,7 @@ if [ -n "${WHEEL_FILENAME}" ]; then
   # construct full URL (wheels are in parent directory)
   # note: actual files don't have +cuXXX suffix despite HTML index showing it
   WHEEL_URL="https://wheels.vllm.ai/${VLLM_PRECOMPILED_WHEEL_COMMIT}/${WHEEL_FILENAME}"
-  WHEEL_URL=$(echo "${WHEEL_URL}" | sed -E 's/%2Bcu[0-9]+//g; s/\+cu[0-9]+//g')
+  WHEEL_URL=$(echo "${WHEEL_URL}" | sed -E 's/\.cu[0-9]+-/-/g; s/%2Bcu[0-9]+-/%2B/g; s/\+cu[0-9]+-/+/g')
   echo "DEBUG: Found wheel: ${WHEEL_FILENAME}"
   echo "DEBUG: Wheel URL: ${WHEEL_URL}"
 else
