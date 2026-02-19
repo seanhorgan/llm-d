@@ -8,9 +8,10 @@ Currently, AI Platform Engineers and ML Engineers face significant challenges as
 
 We are proposing to donate the Prism codebase (currently at [https://github.com/seanhorgan/prism](https://github.com/seanhorgan/prism)) to the `llm-d` organization to:
 
-1.  Establish a community-driven standard & reference for visualizing performance of distributed inference systems.
+1.  Establish a community-driven reference for visualizing performance of distributed inference systems.
 2.  Allow the community to contribute high-quality benchmarks from various sources, e.g. results that conform to the standard `llm-d` benchmark format.
-3.  Make it easier to validate benchmarks and deploy optimized `llm-d` stacks.
+3.  Assist `llm-d` users in visualizing results of their benchmark sweeps
+4.  Make it easier to validate benchmarks and deploy optimized `llm-d` stacks.
 
 ## Goals
 
